@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+.git
+.github
+logs
+coverage
+config.jsonc
+config.*.jsonc
+!config.default.jsonc

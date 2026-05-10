@@ -145,6 +145,8 @@
   "api": {
     /** Port to listen on. Set 'false' to disable **/
     "port": false,
+    /** Bind host. Keep loopback for local-only API exposure. **/
+    "host": "127.0.0.1",
 
     /**
       Enables health API
@@ -157,7 +159,13 @@
       Do not set for live bots, use only for debugging.
       Allows to get DB records like http://ip:port/db?tb=incomingTxsDb
     **/
-    "debug": false
+    "debug": false,
+    /** Required token for debug routes. Send as Authorization: Bearer <token> or x-debug-token **/
+    "debugToken": "CHANGE-ME",
+    /** Allowed IPs for debug routes **/
+    "debugAllowlist": ["127.0.0.1", "::1", "::ffff:127.0.0.1"],
+    /** Max request body size accepted by API **/
+    "maxBodySize": "64kb"
   },
 
   /**

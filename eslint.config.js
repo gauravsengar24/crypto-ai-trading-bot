@@ -55,4 +55,12 @@ module.exports = [
   {
     ignores: ['trade/settings/', 'trade/tests/', 'trade/cs/test/', 'trade/cs/web_legacy/', '*.spec.js'],
   },
+  {
+    files: ['tests/**/*.test.js'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
+    },
+  },
 ];

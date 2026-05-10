@@ -17,6 +17,7 @@ const config = require('./configReader');
 const log = require('../helpers/log');
 const notify = require('../helpers/notify');
 const api = require('./api');
+const commandParser = require('./commandParser');
 
 const tradeParams = require('../trade/settings/tradeParams_' + config.exchange);
 const orderCollector = require('../trade/orderCollector');
@@ -75,20 +76,9 @@ module.exports = async (commandMsg, tx, itx) => {
 
     log.log(`Processing '${commandMsg}' command from ${from}…`);
 
-    let group = commandMsg
-        .trim()
-        .replace(/ {2,}/g, ' ')
-        .split(' ');
-    let commandName = group.shift().trim().toLowerCase().replace('/', '');
-
-    const alias = aliases[commandName];
-    if (alias) {
-      log.log(`Alias '${commandMsg}' converted to command '${alias(group)}'`);
-      group = alias(group)
-          .trim()
-          .replace(/ {2,}/g, ' ')
-          .split(' ');
-      commandName = group.shift().trim().toLowerCase().replace('/', '');
+    const { group, commandName, aliasedCommand } = commandParser.parseCommand(commandMsg, aliases);
+    if (aliasedCommand) {
+      log.log(`Alias '${commandMsg}' converted to command '${aliasedCommand}'`);
     }
 
     const command = commands[commandName];
@@ -578,7 +568,7 @@ async function enable(params, _, isWebApi = false) {
       }
 
       // Parse spread support and trend
-      let isSpreadSupport = false; let trend = 'middle';
+      const isSpreadSupport = false; let trend = 'middle';
       for (let ssOrTrend of [params[6], params[7]]) {
         if (ssOrTrend) {
           ssOrTrend = ssOrTrend?.toLowerCase();
@@ -1047,8 +1037,7 @@ function disable(params) {
 
     const pair = config.defaultPair;
 
-    const paused = parsedParams.is('pause');
-    let pauseActivated = false;
+    const pauseActivated = false;
 
     if (type === 'ob') {
       tradeParams.mm_isOrderBookActive = false;

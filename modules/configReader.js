@@ -2,6 +2,7 @@ const jsonminify = require('jsonminify');
 const fs = require('fs');
 const path = require('path');
 const { createKeypairFromPassphrase, createAddressFromPublicKey } = require('adamant-api');
+const { applyEnvOverrides } = require('./config/envOverrides');
 
 let config = {};
 
@@ -179,7 +180,15 @@ const fields = {
   },
   api: {
     type: Object,
-    default: {},
+    default: {
+      port: false,
+      host: '127.0.0.1',
+      health: false,
+      debug: false,
+      debugToken: '',
+      debugAllowlist: ['127.0.0.1', '::1', '::ffff:127.0.0.1'],
+      maxBodySize: '64kb',
+    },
   },
   db: {
     type: Object,
@@ -224,8 +233,17 @@ try {
       process.argv.includes('test') ||
       process.env.DEV === 'true';
 
-  const doClearDB = process.argv.includes('clear_db');
-  const configCustom = process.argv.find((arg) => !arg.includes('/') && arg !== 'clear_db');
+  const runtimeArgs = process.argv.slice(2);
+  const doClearDB = runtimeArgs.includes('clear_db');
+  // Only treat plain user args as custom config names (e.g., `node app.js myprofile`).
+  // This avoids Windows paths like `C:\Program Files\nodejs\node.exe` being misdetected.
+  const configCustom = runtimeArgs.find((arg) =>
+    !arg.includes('/') &&
+    !arg.includes('\\') &&
+    arg !== 'clear_db' &&
+    arg !== 'dev' &&
+    arg !== 'test',
+  );
 
   // Determine which config file to use
   let configFile;
@@ -250,6 +268,8 @@ try {
   config.doClearDB = doClearDB;
   config.configFile = configFile;
   config.configCustom = configCustom;
+
+  config = applyEnvOverrides(config, process.env);
 
   if (config.passPhrase?.length < 35) {
     config.passPhrase = undefined;
@@ -300,6 +320,11 @@ try {
 
 
   config.isDemoAccount = config.isDemoAccount ?? process.env.OVERRIDE_CONFIG_FUNDS === 'demo';
+  config.api = {
+    ...fields.api.default,
+    ...(config.api || {}),
+  };
+
 
   const pair = config.pair.toUpperCase();
 

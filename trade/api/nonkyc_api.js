@@ -139,6 +139,8 @@ module.exports = function() {
   };
   let log = {};
 
+  const toSafeLog = (value) => (typeof log.redact === 'function' ? log.redact(value) : value);
+
   /**
    * Handles response from API
    * @param {Object} responseOrError
@@ -168,14 +170,15 @@ module.exports = function() {
 
     error.message = error.description + (error.details ? ` (${error.details})` : '');
 
-    const reqParameters = queryString || '{ No parameters }';
+    const reqParameters = toSafeLog(queryString || '{ No parameters }');
 
     try {
       if (success) {
         resolve(data);
       } else {
         const nonkycErrorInfoString = `[${error.code}] ${error.message || 'No error message'}`;
-        const errorMessage = httpCode ? `${httpCode} ${httpMessage}, ${nonkycErrorInfoString}` : String(responseOrError);
+        const errorMessageRaw = httpCode ? `${httpCode} ${httpMessage}, ${nonkycErrorInfoString}` : String(responseOrError);
+        const errorMessage = toSafeLog(errorMessageRaw);
 
         if (typeof data === 'object') {
           data.nonkycErrorInfo = nonkycErrorInfoString;
@@ -192,8 +195,10 @@ module.exports = function() {
         }
       }
     } catch (error) {
-      log.warn(`Error while processing response of request to ${url} with data ${reqParameters}: ${error}. Data object I've got: ${JSON.stringify(data)}.`);
-      reject(`Unable to process data: ${JSON.stringify(data)}. ${error}`);
+      const safeData = toSafeLog(data);
+      const safeError = toSafeLog(error);
+      log.warn(`Error while processing response of request to ${url} with data ${reqParameters}: ${safeError}. Data object I've got: ${safeData}.`);
+      reject(`Unable to process data: ${safeData}. ${safeError}`);
     }
   };
 

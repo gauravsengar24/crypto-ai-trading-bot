@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  bot:
+    build: .
+    container_name: crypto-liquidity-bot
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    env_file:
+      - .env
+    volumes:
+      - ./config.jsonc:/app/config.jsonc:ro
+      - ./logs:/app/logs
+    command: ["node", "app.js"]
+
+  mongo:
+    image: mongo:7
+    container_name: crypto-liquidity-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

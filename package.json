@@ -10,7 +10,7 @@
     "start": "node app.js",
     "start:dev": "node app.js dev",
     "clear": "node app.js dev clear_db",
-    "test": "jest"
+    "test": "jest --testPathIgnorePatterns=trade/tests/manual.test.js"
   },
   "keywords": [
     "market-making",
@@ -38,6 +38,7 @@
   "author": "ADAMANT Developer Community <devs@adamant.im> (https://adamant.im)",
   "license": "GPL-3.0",
   "dependencies": {
+    "@babel/runtime": "^7.29.2",
     "adamant-api": "^2.4.0",
     "axios": "^1.11.0",
     "deep-object-diff": "^1.1.9",

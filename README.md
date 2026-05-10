@@ -145,9 +145,10 @@ git clone https://github.com/asonglin/crypto-liquidity-ai-trading-bot.git && cd 
 npm install
 ```
 
-Edit `config.default.jsonc`, then:
+Create `config.jsonc` from the template, then:
 
 ```bash
+cp config.default.jsonc config.jsonc
 node app.js
 ```
 
@@ -195,7 +196,8 @@ cd crypto-liquidity-ai-trading-bot
 
 ```bash
 npm install
-# Edit config.default.jsonc, then:
+cp config.default.jsonc config.jsonc
+# Edit config.jsonc, then:
 node app.js
 ```
 
@@ -222,6 +224,31 @@ bot = LiquidityBot(api_key="YOUR_API_KEY", secret="YOUR_SECRET")
 bot.scan_liquidity()
 bot.generate_alerts()
 ```
+
+---
+
+## Production hardening checklist
+
+- Keep `api.host` set to `127.0.0.1` unless you explicitly front the API with a trusted reverse proxy.
+- Keep `api.debug` disabled in production; if enabled, configure `api.debugToken` and `api.debugAllowlist`.
+- Prefer env vars for secrets (`BOT_PASSPHRASE`, `EXCHANGE_API_KEY`, `EXCHANGE_API_SECRET`) over plain config values.
+- Never commit `config.jsonc` or `.env` with real credentials.
+
+---
+
+## Container deployment
+
+Build and run with Docker Compose:
+
+```bash
+cp .env.example .env
+cp config.default.jsonc config.jsonc
+docker compose up --build -d
+```
+
+The compose stack starts:
+- `bot` (this project)
+- `mongo` (MongoDB 7)
 
 ---
 

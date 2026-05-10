@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const cryptoLib = require('crypto');
 const axios = require('axios');
 
 const {
@@ -28,6 +28,8 @@ module.exports = function() {
   };
   let log = {};
 
+  const toSafeLog = (value) => (typeof log.redact === 'function' ? log.redact(value) : value);
+
   /**
    * Handles response from API
    * @param {Object} responseOrError
@@ -49,14 +51,15 @@ module.exports = function() {
       msg: data?.msg ?? data?.message ?? 'No error message',
     };
 
-    const reqParameters = queryString || '{ No parameters }';
+    const reqParameters = toSafeLog(queryString || '{ No parameters }');
 
     try {
       if (success) {
         resolve(data.data);
       } else {
         const coinstoreErrorInfo = `[${error.code}] ${trimAny(error.msg, ' .')}`;
-        const errorMessage = httpCode ? `${httpCode} ${httpMessage}, ${coinstoreErrorInfo}` : String(responseOrError);
+        const errorMessageRaw = httpCode ? `${httpCode} ${httpMessage}, ${coinstoreErrorInfo}` : String(responseOrError);
+        const errorMessage = toSafeLog(errorMessageRaw);
 
         if (typeof data === 'object') {
           data.coinstoreErrorInfo = coinstoreErrorInfo;
@@ -74,8 +77,10 @@ module.exports = function() {
         }
       }
     } catch (error) {
-      log.warn(`Error while processing response of request to ${url} with data ${reqParameters}: ${error}. Data object I've got: ${JSON.stringify(data)}.`);
-      reject(`Unable to process data: ${JSON.stringify(data)}. ${error}`);
+      const safeData = toSafeLog(data);
+      const safeError = toSafeLog(error);
+      log.warn(`Error while processing response of request to ${url} with data ${reqParameters}: ${safeError}. Data object I've got: ${safeData}.`);
+      reject(`Unable to process data: ${safeData}. ${safeError}`);
     }
   };
 
@@ -157,11 +162,11 @@ module.exports = function() {
    * @returns {String}
    */
   function getSignature(secret, timestamp, payload) {
-    const key = crypto.createHmac('sha256', secret)
+    const key = cryptoLib.createHmac('sha256', secret)
         .update(Math.floor(timestamp / 30000).toString()) // X-CS-EXPIRES is a 13-bit timestamp, which needs to be divided by 30000 to obtain a class timestamp
         .digest('hex');
 
-    return crypto
+    return cryptoLib
         .createHmac('sha256', key)
         .update(payload)
         .digest('hex');

@@ -12,6 +12,7 @@ const utils = require('../helpers/utils');
 const config = require('../modules/configReader');
 const log = require('../helpers/log');
 const notify = require('../helpers/notify');
+const orderState = require('./orderState');
 const traderapi = require('./trader_' + config.exchange)(
     config.apikey,
     config.apisecret,
@@ -26,14 +27,6 @@ const db = require('../modules/DB');
 const tradeParams = require('./settings/tradeParams_' + config.exchange);
 
 const perpetualApi = undefined;
-
-// Cache is stored for the first trading account only
-let openOrdersCached = [];
-const openOrdersValidMs = 1000;
-let orderBookCached = [];
-const orderBookCachedValidMs = 1000;
-let balancesCached = { timestamp: 0, data: [] };
-const balancesCachedValidMs = 1000;
 
 const moduleId = /** @type {NodeJS.Module} */ (module).id;
 const moduleName = utils.getModuleName(moduleId);
@@ -244,9 +237,7 @@ module.exports = {
    * @param {string} callerName Module & function name for logging
    */
   clearCache(callerName) {
-    openOrdersCached = [];
-    orderBookCached = [];
-    balancesCached = { timestamp: 0, data: [] };
+    orderState.clear();
 
     log.log(`orderUtils: Cache cleared${callerName ? ' by ' + callerName : ''}.`);
   },
@@ -886,7 +877,7 @@ module.exports = {
 
     try {
       const onWhichAccount = api.isSecondAccount ? ' on second account' : '';
-      const cached = openOrdersCached[pair];
+      const cached = orderState.getOpenOrdersCache(pair);
       const socketDataAvailable = api.features().socketEnabled && api.isPrivateWsEnabled('orders');
 
       const isPerpetual = utils.isPerpetual(pair);
@@ -898,7 +889,7 @@ module.exports = {
       }
 
       const cacheTerm = Date.now() - cached?.timestamp;
-      const isCacheValid = cacheTerm < openOrdersValidMs;
+      const isCacheValid = cacheTerm < orderState.getOpenOrdersValidMs();
 
       if (
         !socketDataAvailable &&
@@ -923,9 +914,7 @@ module.exports = {
 
         if (exchangeOrders ) {
           if (!api.isSecondAccount && !isPerpetual) {
-            openOrdersCached[pair] = {};
-            openOrdersCached[pair].data = exchangeOrders;
-            openOrdersCached[pair].timestamp = Date.now(); // in ms
+            orderState.setOpenOrdersCache(pair, exchangeOrders);
           }
 
           result = utils.cloneArray(exchangeOrders);
@@ -955,7 +944,7 @@ module.exports = {
     let result;
 
     try {
-      const cached = orderBookCached[pair];
+      const cached = orderState.getOrderBookCache(pair);
       const socketDataAvailable = traderapi.features().socketEnabled && traderapi.isPublicWsEnabled('depth');
 
       const isPerpetual = utils.isPerpetual(pair);
@@ -967,7 +956,7 @@ module.exports = {
       }
 
       const cacheTerm = Date.now() - cached?.timestamp;
-      const isCacheValid = cacheTerm < orderBookCachedValidMs;
+      const isCacheValid = cacheTerm < orderState.getOrderBookValidMs();
 
       if (
         !socketDataAvailable &&
@@ -1005,9 +994,7 @@ module.exports = {
           logMessage += ` ${orderBookSpreadInfo}.`;
           log.log(logMessage);
 
-          orderBookCached[formattedPair.pair] = {};
-          orderBookCached[formattedPair.pair].data = ob;
-          orderBookCached[formattedPair.pair].timestamp = Date.now(); // in ms
+          orderState.setOrderBookCache(formattedPair.pair, ob);
           result = utils.cloneObject(ob);
         } else {
           log.warn(`orderUtils: Unable to get ${pair} order book.`);
@@ -1054,11 +1041,11 @@ module.exports = {
               ` {contract_default}-type` :
               ` {spot_default}-type`;
 
-      const cached = balancesCached;
+      const cached = orderState.getBalancesCache();
       const socketDataAvailable = api.features().socketEnabled && api.isPrivateWsEnabled('balance');
 
       const cacheTerm = Date.now() - cached?.timestamp;
-      const isCacheValid = cacheTerm < balancesCachedValidMs;
+      const isCacheValid = cacheTerm < orderState.getBalancesValidMs();
 
       if (
         !socketDataAvailable &&
@@ -1094,8 +1081,7 @@ module.exports = {
         if (balances && !errorMessage) {
           // Update cached balances
           if (!walletType && !api.isSecondAccount) {
-            balancesCached.data = balances;
-            balancesCached.timestamp = Date.now(); // in ms
+            orderState.setBalancesCache(balances);
           }
 
           result = utils.cloneArray(balances);
